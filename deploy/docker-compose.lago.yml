@@ -1,7 +1,4 @@
-version: "3.8"
-
 volumes:
-  lago_rsa_data:
   lago_postgres_data:
   lago_redis_data:
   lago_storage_data:
@@ -126,9 +123,7 @@ services:
     volumes:
       - lago_storage_data:/app/storage
       - lago_rsa_data:/app/config/keys
-    ports:
-      - "3000:3000"
-
+      
   front:
     image: getlago/front:v1.27.1
     container_name: lago-front
@@ -142,8 +137,6 @@ services:
       LAGO_OAUTH_PROXY_URL: https://proxy.getlago.com
       LAGO_API_URL: ${LAGO_API_URL}
       LAGO_FRONT_URL: ${LAGO_FRONT_URL}
-    ports:
-      - "80:80"
 
   api-worker:
     image: getlago/api:v1.27.1

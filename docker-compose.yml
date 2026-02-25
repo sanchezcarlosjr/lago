@@ -163,6 +163,8 @@ services:
       api:
         condition: service_healthy
         restart: true
+    ports:
+      - 3001:3000
     environment:
       <<: [*frontend-env, *lago-api-url, *lago-front-url]
     #  - 443:443

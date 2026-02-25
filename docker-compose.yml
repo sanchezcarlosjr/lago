@@ -8,13 +8,13 @@ volumes:
   portainer_data:
 
 x-postgres-image: &postgres-image
-  image: postgres:15-alpine
+  image: getlago/postgres-partman:15.0-alpine
 x-redis-image: &redis-image
   image: redis:7-alpine
 x-backend-image: &backend-image
-  image: getlago/api:v1.27.1
+  image: getlago/api:v1.42.0
 x-frontend-image: &frontend-image
-  image: getlago/front:v1.27.1
+  image: getlago/front:v1.42.0
 
 x-lago-domain: &lago-domain
   LAGO_DOMAIN: ${LAGO_DOMAIN}

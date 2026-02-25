@@ -163,6 +163,8 @@ services:
       api:
         condition: service_healthy
         restart: true
+    ports:
+     - 3001:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.lago-front.priority=50"

@@ -196,8 +196,6 @@ services:
       api:
         condition: service_healthy
         restart: true
-    ports:
-     - 3001:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.lago-front.priority=50"
@@ -205,6 +203,10 @@ services:
       - "traefik.http.routers.lago-front.rule=Host(`${LAGO_DOMAIN}`)"
       - "traefik.http.routers.lago-front.tls.certresolver=letsencrypt"
       - "traefik.http.services.lago-front.loadbalancer.server.port=80"
+    ports:
+      - 80
+    networks:
+      - dokploy-network
     environment:
       <<: [*frontend-env, *lago-api-url, *lago-front-url]
     
@@ -360,3 +362,8 @@ services:
 
   pdf:
     image: getlago/lago-gotenberg:7.8.2
+
+
+networks:
+  dokploy-network:
+    external: true

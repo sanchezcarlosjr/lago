@@ -133,7 +133,7 @@ services:
     container_name: lago-api
     restart: unless-stopped
     ports:
-      - 80
+      - 3000
     depends_on:
       migrate:
         condition: service_completed_successfully

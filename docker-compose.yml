@@ -210,6 +210,8 @@ services:
       start_interval: 2s
     environment:
       <<: [*backend-env, *lago-api-url]
+    ports:
+      - 3002:3000
     volumes:
       - lago_storage_data:/app/storage
 

@@ -163,10 +163,16 @@ services:
       api:
         condition: service_healthy
         restart: true
-    ports:
-      - 3001:80
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lago-front.priority=50"
+      - "traefik.http.routers.lago-front.entrypoints=websecure"
+      - "traefik.http.routers.lago-front.rule=Host(`${LAGO_DOMAIN}`)"
+      - "traefik.http.routers.lago-front.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lago-front.loadbalancer.server.port=80"
     environment:
       <<: [*frontend-env, *lago-api-url, *lago-front-url]
+    
     #  - 443:443
     # Using SSL with Let's Encrypt
     # volumes:
@@ -210,8 +216,6 @@ services:
       start_interval: 2s
     environment:
       <<: [*backend-env, *lago-api-url]
-    ports:
-      - 3002:3000
     volumes:
       - lago_storage_data:/app/storage
 

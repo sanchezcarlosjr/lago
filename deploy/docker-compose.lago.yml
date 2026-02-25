@@ -131,6 +131,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    ports:
+      - 3001:3000
     environment:
       API_URL: ${LAGO_API_URL}
       APP_ENV: production

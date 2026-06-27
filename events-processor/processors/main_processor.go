@@ -8,6 +8,7 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kgo"
 
+	"github.com/getlago/lago/events-processor/cache"
 	"github.com/getlago/lago/events-processor/config/database"
 	"github.com/getlago/lago/events-processor/config/kafka"
 	"github.com/getlago/lago/events-processor/config/redis"
@@ -49,8 +50,8 @@ const (
 )
 
 type Config struct {
-	Logger         *slog.Logger
 	TracerProvider tracing.TracerProvider
+	Cache          *cache.Cache
 }
 
 func initProducer(ctx context.Context, topicEnv string) (*kafka.Producer, error) {
@@ -128,7 +129,7 @@ func initChargeCacheStore(ctx context.Context) (*models.ChargeCache, error) {
 func StartProcessingEvents(ctx context.Context, config *Config) {
 	serverBrokers := utils.ParseBrokersEnv(os.Getenv(envLagoKafkaBootstrapServers))
 	if len(serverBrokers) == 0 {
-		config.Logger.Error("brokers not found")
+		slog.Error("brokers not found")
 		panic("brokers not found")
 	}
 
@@ -143,63 +144,63 @@ func StartProcessingEvents(ctx context.Context, config *Config) {
 
 	eventsEnrichedProducer, err := initProducer(ctx, envLagoKafkaEnrichedEventsTopic)
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "failed to initialize enriched events producer")
+		utils.LogAndPanic(err, "failed to initialize enriched events producer")
 	}
 
 	eventsEnrichedExpandedProducer, err := initProducer(ctx, envLagoKafkaEnrichedEventsExpandedTopic)
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "failed to initialize enriched events expanded producer")
+		utils.LogAndPanic(err, "failed to initialize enriched events expanded producer")
 	}
 
 	eventsInAdvanceProducer, err := initProducer(ctx, envLagoKafkaEventsChargedInAdvanceTopic)
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "failed to initialize events charged in advance producer")
+		utils.LogAndPanic(err, "failed to initialize events charged in advance producer")
 	}
 
 	eventsDeadLetterQueue, err := initProducer(ctx, envLagoKafkaEventsDeadLetterTopic)
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "failed to initialize events dead letter queue producer")
+		utils.LogAndPanic(err, "failed to initialize events dead letter queue producer")
 	}
 
-	maxConns, err := utils.GetEnvAsInt(envLagoEventsProcessorDatabaseMaxConnections, 200)
+	if config.Cache == nil {
+		maxConns, err := utils.GetEnvAsInt(envLagoEventsProcessorDatabaseMaxConnections, 200)
+		if err != nil {
+			utils.LogAndPanic(err, "Error converting max connections into integer")
+		}
+
+		dbConfig := database.DBConfig{
+			Url:      os.Getenv("DATABASE_URL"),
+			MaxConns: int32(maxConns),
+		}
+
+		db, err := database.NewConnection(dbConfig)
+		if err != nil {
+			utils.LogAndPanic(err, "Error connecting to the database")
+		}
+		apiStore = models.NewApiStore(db)
+		defer db.Close()
+	}
+
+	flagger, err := initFlagStore(ctx, "subscription_refreshed_v2")
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "Error converting max connections into integer")
-	}
-
-	dbConfig := database.DBConfig{
-		Url:      os.Getenv("DATABASE_URL"),
-		MaxConns: int32(maxConns),
-	}
-
-	db, err := database.NewConnection(dbConfig)
-	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "Error connecting to the database")
-	}
-	apiStore = models.NewApiStore(db)
-	defer db.Close()
-
-	flagger, err := initFlagStore(ctx, "subscription_refreshed")
-	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "Error connecting to the flag store")
+		utils.LogAndPanic(err, "Error connecting to the flag store")
 	}
 	defer flagger.Close()
 
 	cacher, err := initChargeCacheStore(ctx)
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "Error connecting to the charge cache store")
+		utils.LogAndPanic(err, "Error connecting to the charge cache store")
 	}
 	chargeCacheStore = cacher
 	defer chargeCacheStore.CacheStore.Close()
 
 	processor = events_processor.NewEventProcessor(
-		config.Logger,
-		events_processor.NewEventEnrichmentService(apiStore),
+		events_processor.NewEventEnrichmentService(apiStore, config.Cache),
 		events_processor.NewEventProducerService(
 			eventsEnrichedProducer,
 			eventsEnrichedExpandedProducer,
 			eventsInAdvanceProducer,
 			eventsDeadLetterQueue,
-			config.Logger,
 		),
 		events_processor.NewSubscriptionRefreshService(flagger),
 		events_processor.NewCacheService(chargeCacheStore),
@@ -215,10 +216,10 @@ func StartProcessingEvents(ctx context.Context, config *Config) {
 			},
 		})
 	if err != nil {
-		utils.LogAndPanic(config.Logger, err, "Error starting the event consumer")
+		utils.LogAndPanic(err, "Error starting the event consumer")
 	}
 
-	config.Logger.Info("Starting event consumer")
+	slog.Info("Starting event consumer")
 	cg.Start(ctx)
-	config.Logger.Info("Event processor stopped")
+	slog.Info("Event processor stopped")
 }

@@ -13,8 +13,8 @@ import (
 
 var fetchBillableMetricQuery = regexp.QuoteMeta(`
 	SELECT * FROM "billable_metrics"
-	WHERE (organization_id = $1 AND code = $2)
-	AND "billable_metrics"."deleted_at" IS NULL
+	WHERE organization_id = $1 AND code = $2
+	AND deleted_at IS NULL
 	ORDER BY "billable_metrics"."id"
 	LIMIT $3`,
 )

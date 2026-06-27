@@ -13,7 +13,7 @@ volumes:
 
 services:
   traefik:
-    image: "traefik:v3"
+    image: traefik:v3
     container_name: lago_traefik_dev
     restart: unless-stopped
     ports:
@@ -57,7 +57,12 @@ services:
     image: redis:7-alpine
     container_name: lago_redis_dev
     restart: unless-stopped
-    command: ["sh", "-c", "redis-server $${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}"]
+    command:
+      - sh
+      - -c
+      - >
+          redis-server --enable-debug-command local
+          $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     env_file:
       - path: ./.env.development.default
       - path: ./.env.development
@@ -387,6 +392,7 @@ services:
       - events_dead_letter
       - activity_logs
       - api_logs
+      - security_logs
     volumes:
       - ./scripts/create-topics.sh:/usr/local/bin/create-topics
     environment:
@@ -441,7 +447,7 @@ services:
       CONNECT_PLUGIN_PATH: "/opt/kafka/connect-plugins"
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.4-alpine
+    image: clickhouse/clickhouse-server:26.2-alpine
     container_name: lago_clickhouse_dev
     restart: unless-stopped
     hostname: clickhouse

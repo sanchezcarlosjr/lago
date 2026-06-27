@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -21,7 +19,6 @@ var (
 	enrichedExpandedProducer *tests.MockMessageProducer
 	inAdvanceProducer        *tests.MockMessageProducer
 	deadLetterProducer       *tests.MockMessageProducer
-	logger                   *slog.Logger
 )
 
 func setupProducerServiceEnv() {
@@ -30,15 +27,11 @@ func setupProducerServiceEnv() {
 	inAdvanceProducer = &tests.MockMessageProducer{}
 	deadLetterProducer = &tests.MockMessageProducer{}
 
-	logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
-
 	producerService = NewEventProducerService(
 		enrichedProducer,
 		enrichedExpandedProducer,
 		inAdvanceProducer,
 		deadLetterProducer,
-		logger,
 	)
 }
 
@@ -49,6 +42,7 @@ func TestProduceEnrichedEvent(t *testing.T) {
 		OrganizationID:         "1a901a90-1a90-1a90-1a90-1a901a901a90",
 		ExternalSubscriptionID: "sub_id",
 		Code:                   "api_calls",
+		TransactionID:          "transaction_id",
 	}
 
 	producerService.ProduceEnrichedEvent(context.Background(), &event)
@@ -56,7 +50,7 @@ func TestProduceEnrichedEvent(t *testing.T) {
 	assert.Equal(t, 1, enrichedProducer.ExecutionCount)
 	assert.Equal(
 		t,
-		[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls"),
+		[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 		enrichedProducer.Key,
 	)
 
@@ -72,6 +66,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 			OrganizationID:         "1a901a90-1a90-1a90-1a90-1a901a901a90",
 			ExternalSubscriptionID: "sub_id",
 			Code:                   "api_calls",
+			TransactionID:          "transaction_id",
 		}
 
 		producerService.ProduceEnrichedExpandedEvent(context.Background(), &event)
@@ -79,7 +74,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 		assert.Equal(t, 1, enrichedExpandedProducer.ExecutionCount)
 		assert.Equal(
 			t,
-			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls---"),
+			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 			enrichedExpandedProducer.Key,
 		)
 
@@ -95,6 +90,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 			ExternalSubscriptionID: "sub_id",
 			Code:                   "api_calls",
 			ChargeID:               utils.StringPtr("charge_id"),
+			TransactionID:          "transaction_id",
 		}
 
 		producerService.ProduceEnrichedExpandedEvent(context.Background(), &event)
@@ -102,7 +98,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 		assert.Equal(t, 1, enrichedExpandedProducer.ExecutionCount)
 		assert.Equal(
 			t,
-			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls-charge_id--"),
+			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 			enrichedExpandedProducer.Key,
 		)
 
@@ -118,6 +114,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 			ExternalSubscriptionID: "sub_id",
 			Code:                   "api_calls",
 			ChargeFilterID:         utils.StringPtr("charge_filter_id"),
+			TransactionID:          "transaction_id",
 		}
 
 		producerService.ProduceEnrichedExpandedEvent(context.Background(), &event)
@@ -125,7 +122,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 		assert.Equal(t, 1, enrichedExpandedProducer.ExecutionCount)
 		assert.Equal(
 			t,
-			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls--charge_filter_id-"),
+			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 			enrichedExpandedProducer.Key,
 		)
 
@@ -141,6 +138,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 			ExternalSubscriptionID: "sub_id",
 			Code:                   "api_calls",
 			GroupedBy:              map[string]string{"country": "US", "type": "debit"},
+			TransactionID:          "transaction_id",
 		}
 
 		producerService.ProduceEnrichedExpandedEvent(context.Background(), &event)
@@ -148,7 +146,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 		assert.Equal(t, 1, enrichedExpandedProducer.ExecutionCount)
 		assert.Equal(
 			t,
-			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls---country/US|type/debit"),
+			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 			enrichedExpandedProducer.Key,
 		)
 
@@ -164,6 +162,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 			ExternalSubscriptionID: "sub_id",
 			Code:                   "api_calls",
 			GroupedBy:              map[string]string{"type": "debit", "country": "US"},
+			TransactionID:          "transaction_id",
 		}
 
 		producerService.ProduceEnrichedExpandedEvent(context.Background(), &event)
@@ -171,7 +170,7 @@ func TestProduceEnrichedExtendedEvent(t *testing.T) {
 		assert.Equal(t, 1, enrichedExpandedProducer.ExecutionCount)
 		assert.Equal(
 			t,
-			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls---country/US|type/debit"),
+			[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 			enrichedExpandedProducer.Key,
 		)
 
@@ -187,6 +186,7 @@ func TestProduceChargedInAdvanceEvent(t *testing.T) {
 		OrganizationID:         "1a901a90-1a90-1a90-1a90-1a901a901a90",
 		ExternalSubscriptionID: "sub_id",
 		Code:                   "api_calls",
+		TransactionID:          "transaction_id",
 	}
 
 	producerService.ProduceChargedInAdvanceEvent(context.Background(), &event)
@@ -194,7 +194,7 @@ func TestProduceChargedInAdvanceEvent(t *testing.T) {
 	assert.Equal(t, 1, inAdvanceProducer.ExecutionCount)
 	assert.Equal(
 		t,
-		[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-sub_id-api_calls"),
+		[]byte("1a901a90-1a90-1a90-1a90-1a901a901a90-transaction_id"),
 		inAdvanceProducer.Key,
 	)
 
@@ -209,6 +209,7 @@ func TestProduceToDeadLetterQueue(t *testing.T) {
 		OrganizationID:         "1a901a90-1a90-1a90-1a90-1a901a901a90",
 		ExternalSubscriptionID: "sub_id",
 		Code:                   "api_calls",
+		TransactionID:          "transaction_id",
 	}
 
 	result := utils.FailedResult[string](fmt.Errorf("Error Message"))

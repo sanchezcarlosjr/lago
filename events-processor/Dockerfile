@@ -4,7 +4,7 @@ RUN git clone --tags https://github.com/getlago/lago-expression/
 WORKDIR /lago-expression/expression-go
 RUN git checkout v0.2.0 && cargo build --release
 
-FROM golang:1.24 AS go-build
+FROM golang:1.25 AS go-build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN go mod download
 COPY --from=rust-build /lago-expression/target/release/libexpression_go.so /usr/lib/libexpression_go.so
 RUN go build -o event_processors .
 
-FROM debian:bookworm
+FROM debian:13-slim
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y ca-certificates
 

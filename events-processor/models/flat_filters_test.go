@@ -11,7 +11,9 @@ import (
 )
 
 var fetchFiltersQuery = regexp.QuoteMeta(`
-	SELECT * FROM "flat_filters" WHERE plan_id = $1 AND billable_metric_code = $2`)
+	SELECT "organization_id","billable_metric_code","plan_id","charge_id","charge_updated_at","charge_filter_id","charge_filter_updated_at","filters","pricing_group_keys","pay_in_advance","accepts_target_wallet"
+	FROM "flat_filters"
+	WHERE organization_id = $1 AND plan_id = $2 AND billable_metric_code = $3`)
 
 func TestFetchFlatFilters(t *testing.T) {
 	t.Run("should return flat filters when found", func(t *testing.T) {
@@ -20,6 +22,7 @@ func TestFetchFlatFilters(t *testing.T) {
 		defer cleanup()
 
 		code := "api_calls"
+		organizationID := "1a901a90-1a90-1a90-1a90-1a901a901a90"
 		planID := "1a901a90-1a90-1a90-1a90-1a901a901a90"
 		now := time.Now()
 
@@ -50,7 +53,7 @@ func TestFetchFlatFilters(t *testing.T) {
 		}
 		rows := sqlmock.NewRows(columns).
 			AddRow(
-				"1a901a90-1a90-1a90-1a90-1a901a901a90",
+				organizationID,
 				code,
 				planID,
 				"1a901a90-1a90-1a90-1a90-1a901a901a90",
@@ -65,10 +68,10 @@ func TestFetchFlatFilters(t *testing.T) {
 
 		// Expect the query
 		mock.ExpectQuery(fetchFiltersQuery).
-			WithArgs(planID, code).
+			WithArgs(organizationID, planID, code).
 			WillReturnRows(rows)
 
-		result := store.FetchFlatFilters(planID, code)
+		result := store.FetchFlatFilters(organizationID, planID, code)
 
 		// Assert
 		assert.True(t, result.Success())
@@ -92,6 +95,7 @@ func TestFetchFlatFilters(t *testing.T) {
 		defer cleanup()
 
 		code := "api_calls"
+		organizationID := "1a901a90-1a90-1a90-1a90-1a901a901a90"
 		planID := "1a901a90-1a90-1a90-1a90-1a901a901a90"
 
 		// Define expected rows and columns
@@ -112,10 +116,10 @@ func TestFetchFlatFilters(t *testing.T) {
 
 		// Expect the query
 		mock.ExpectQuery(fetchFiltersQuery).
-			WithArgs(planID, code).
+			WithArgs(organizationID, planID, code).
 			WillReturnRows(rows)
 
-		result := store.FetchFlatFilters(planID, code)
+		result := store.FetchFlatFilters(organizationID, planID, code)
 
 		// Assert
 		assert.True(t, result.Success())
@@ -236,6 +240,7 @@ func TestToDefaultFilter(t *testing.T) {
 			},
 			PayInAdvance:        true,
 			AcceptsTargetWallet: false,
+			PricingGroupKeys:    []string{"region"},
 		}
 
 		filter := flatFilter.ToDefaultFilter()
@@ -244,6 +249,7 @@ func TestToDefaultFilter(t *testing.T) {
 		assert.Equal(t, filter.PlanID, flatFilter.PlanID)
 		assert.Equal(t, filter.ChargeID, flatFilter.ChargeID)
 		assert.Equal(t, filter.ChargeUpdatedAt, flatFilter.ChargeUpdatedAt)
+		assert.Equal(t, filter.PricingGroupKeys, flatFilter.PricingGroupKeys)
 		assert.Nil(t, filter.ChargeFilterID)
 		assert.Nil(t, filter.ChargeFilterUpdatedAt)
 		assert.Nil(t, filter.Filters)
